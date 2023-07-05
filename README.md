@@ -1,2 +1,5 @@
 # PortfolioSort
-Repository to perform portfolio sorts (single and double) for empirical asset pricing
+Repository to perform portfolio sorts in empirical asset pricing.
+
+
+

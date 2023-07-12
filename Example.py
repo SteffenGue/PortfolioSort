@@ -25,9 +25,49 @@ df_mcap = pd.DataFrame(np.random.randn(2000 * 2000).reshape(2000, 2000) * 1e9,
 df_mom = np.log(1 + df_ret).rolling(window=8, min_periods=8).sum()
 df_mom = np.exp(df_mom) - 1
 
+
+# First example: perform a single sort and return each portfolio return and the p-value of a Student's t-test against
+# the null hypothesis of mean zero returns.
 result = PortfolioSort.single_sort(df_char=df_mom,
                                    df_ret=df_ret,
                                    df_mcap=df_mcap,
-                                   quantiles=[0, .2, .4, .6, .8, 1])
+                                   quantiles=[0, .2, .4, .6, .8, 1],
+                                   speedups=True)
+
+print(result.round(3))
+
+# Instead of returning the p-value of the Student's t-test, return the test statistic itself:
+result = PortfolioSort.single_sort(df_char=df_mom,
+                                   df_ret=df_ret,
+                                   df_mcap=df_mcap,
+                                   quantiles=[0, .2, .4, .6, .8, 1],
+                                   get_tstat=True)
+
+print(result.round(3))
+
+# Now we are only interested in the sorting results, i.e. which asset was sorted into which portfolio:
+result = PortfolioSort.single_sort(df_char=df_mom,
+                                   df_ret=df_ret,
+                                   df_mcap=df_mcap,
+                                   quantiles=[0, .2, .4, .6, .8, 1],
+                                   get_quantile_sorts=True)
+
+print(result.head())
+
+# Next, we are not interested in the average portfolio returns, but the return series itself:
+result = PortfolioSort.single_sort(df_char=df_mom,
+                                   df_ret=df_ret,
+                                   df_mcap=df_mcap,
+                                   quantiles=[0, .2, .4, .6, .8, 1],
+                                   get_series=True)
+
+print(result.head())
+
+# If multiple sorts are performed, consider to use the speedups, which will omit all portfolios except high and low:
+result = PortfolioSort.single_sort(df_char=df_mom,
+                                   df_ret=df_ret,
+                                   df_mcap=df_mcap,
+                                   quantiles=[0, .2, .4, .6, .8, 1],
+                                   speedups=True)
 
 print(result.round(3))

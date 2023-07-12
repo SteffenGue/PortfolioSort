@@ -1,11 +1,19 @@
 from typing import Union, Optional
 
+import warnings
+
 from numba import jit
 from numba.typed import List
 
 import numpy as np
 import pandas as pd
 from scipy.stats import ttest_1samp as tt
+
+warnings.filterwarnings(
+    action='ignore',
+    category=UserWarning,
+    module=r'.*numpy'
+)
 
 
 class PortfolioSort:

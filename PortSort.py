@@ -44,6 +44,9 @@ class PortfolioSort:
             @return The portfolio means and test statistics as a tuple of Numpy arrays, or a Pandas DataFrame.
         """
 
+        # Check the quantiles input, and delete 0 if included
+        quantiles = [x for x in quantiles if x != 0]
+
         # Set the minimum required asset per timestamp
         minObs = len(quantiles) * min_assets
 
@@ -67,6 +70,13 @@ class PortfolioSort:
         df_char[~valid_observations] = np.nan
         df_ret[~valid_observations] = np.nan
         df_mcap[~valid_observations] = np.nan
+
+        # Determine if NaNs are present in the return matrix in order to count the portfolio population correctly.
+        # Otherwise, np.unique() would count NaNs as an additional portfolio.
+        if np.isnan(df_ret).any():
+            PortfolioSort.has_nan = True
+        else:
+            PortfolioSort.has_nan = False
 
         # Check length of columns and indexes
         if not df_char.shape == df_ret.shape == df_mcap.shape:
@@ -130,7 +140,7 @@ class PortfolioSort:
             assert len(assets[1]) == asset_count.get(quantile)
 
             mcap_quantile = np.empty(df_mcap.shape)
-            mcap_quantile[:] = np.nan
+            mcap_quantile.fill(np.nan)
             mcap_quantile[assets] = df_mcap[assets].copy()
 
             if value_weighted:
@@ -168,10 +178,12 @@ class PortfolioSort:
 
         result = np.concatenate([result, hedge_port[:, None]], axis=1)
 
-        # Return the time series if specified
+        # Return the time series if specified. Note that the return series has to be shifted forwards by 'char_lag'
+        # periods, as the returns where pulled back, whereas the market value and characteristic exposure remained.
         if get_series:
             timestamps = np.array(timestamps)[valid_ticks]
-            return pd.DataFrame(data=result, index=timestamps[:char_lag], columns=[*range(1, quantiles + 1), "H-L"])
+            series = pd.DataFrame(data=result, index=timestamps[:char_lag], columns=[*range(1, quantiles + 1), "H-L"])
+            return series.shift(np.abs(char_lag))
 
         # Calculate t-statistic and assign either statistic or p-value
         t, p = np.apply_along_axis(tt, 0, result, **{"popmean": 0, "nan_policy": "omit"})
@@ -279,10 +291,13 @@ class PortfolioSort:
     @staticmethod
     def _count_portfolio_pop(quantile_sorts: np.ndarray, quantiles: int) -> np.ndarray:
         """ Count the number of assets in each portfolio each period."""
-        population = np.zeros((quantile_sorts.shape[0], quantiles))
+        population = np.zeros((quantile_sorts.shape[0], len(np.unique(quantile_sorts))))
 
         for i in range(quantile_sorts.shape[0]):
             port, counter = np.unique(quantile_sorts[i, :], return_counts=True)
             population[i, port] = counter
 
-        return population
+        if PortfolioSort.has_nan and len(np.unique(quantile_sorts)) > quantiles:
+            return population[:, :-1]
+        else:
+            return population
